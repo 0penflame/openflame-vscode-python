@@ -4,16 +4,17 @@
 'use strict';
 
 import * as assert from 'assert';
+import * as path from 'path';
 import * as sinon from 'sinon';
 import { expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
+import { env } from 'vscode';
 import { AttachProcessProvider } from '../../../extension/debugger/attachQuickPick/provider';
 import { PsProcessParser } from '../../../extension/debugger/attachQuickPick/psProcessParser';
 import { IAttachItem } from '../../../extension/debugger/attachQuickPick/types';
 import { WmicProcessParser } from '../../../extension/debugger/attachQuickPick/wmicProcessParser';
 import * as platform from '../../../extension/common/platform';
 import * as rawProcessApis from '../../../extension/common/process/rawProcessApis';
-import * as wpc from '@vscode/windows-process-tree';
 
 use(chaiAsPromised);
 
@@ -22,16 +23,55 @@ suite('Attach to process - process provider', () => {
     let getOSTypeStub: sinon.SinonStub;
     let plainExecStub: sinon.SinonStub;
     let getAllProcessesStub: sinon.SinonStub;
+    let loadWindowsProcessTreeStub: sinon.SinonStub;
 
     setup(() => {
         provider = new AttachProcessProvider();
         getOSTypeStub = sinon.stub(platform, 'getOSType');
         plainExecStub = sinon.stub(rawProcessApis, 'plainExec');
-        getAllProcessesStub = sinon.stub(wpc, 'getAllProcesses');
+        getAllProcessesStub = sinon.stub();
+        loadWindowsProcessTreeStub = sinon.stub(provider, '_loadWindowsProcessTree').returns({
+            getAllProcesses: getAllProcessesStub,
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            ProcessDataFlag: { None: 0, Memory: 1, CommandLine: 2 },
+        } as any);
     });
 
     teardown(() => {
         sinon.restore();
+    });
+
+    suite('_loadWindowsProcessTree', () => {
+        test('Loads windows-process-tree from node_modules.asar', () => {
+            loadWindowsProcessTreeStub.restore();
+            const expectedModule = {};
+            const nodeRequire = sinon.stub();
+            nodeRequire
+                .withArgs(path.join(env.appRoot, 'node_modules.asar', '@vscode', 'windows-process-tree'))
+                .returns(expectedModule);
+
+            const result = provider._loadWindowsProcessTree(nodeRequire);
+
+            assert.strictEqual(result, expectedModule);
+            sinon.assert.calledOnce(nodeRequire);
+        });
+
+        test('Falls back to the physical node_modules directory', () => {
+            loadWindowsProcessTreeStub.restore();
+            const expectedModule = {};
+            const nodeRequire = sinon.stub();
+            nodeRequire
+                .withArgs(path.join(env.appRoot, 'node_modules.asar', '@vscode', 'windows-process-tree'))
+                .throws(new Error('ASAR module not found'));
+            nodeRequire
+                .withArgs(path.join(env.appRoot, 'node_modules', '@vscode', 'windows-process-tree'))
+                .returns(expectedModule);
+
+            const result = provider._loadWindowsProcessTree(nodeRequire);
+
+            assert.strictEqual(result, expectedModule);
+            sinon.assert.callCount(nodeRequire, 2);
+        });
     });
 
     test('The Linux process list command should be called if the platform is Linux', async () => {

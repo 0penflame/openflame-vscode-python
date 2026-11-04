@@ -6,6 +6,16 @@ Python service running in an OpenFlame workspace can be attached to from
 code-server with the OpenFlame process picker
 (`0penflame/openflame-vscode-process-picker`).
 
+`openflame-2026.6.0` started from the `v2026.6.0` tag. This fork's `main`,
+which tracks upstream `main`, was later merged into it so the branch merges
+cleanly into `main`. The branch therefore also carries the upstream commits
+made on `main` after `v2026.6.0`: dependency and GitHub Actions updates,
+debugpy 1.8.21 in place of 1.8.20 (`DEBUGPY_VERSION` in `noxfile.py`), the
+`breakOnSystemExit` launch/attach setting, the pytest multiprocessing
+child-exit fix, the Windows process tree loading fix and the
+`noConfigScripts` shebang fix. The version stays
+`2026.6.0-openflame.1` rather than upstream `main`'s `2026.7.0-dev`.
+
 The OpenFlame workspace image installs `ms-python.python` from Open VSX, which
 pulls in `ms-python.debugpy` as a dependency, then installs this build over it
 from `extensions/python-debugger.vsix`.
@@ -93,3 +103,9 @@ OpenFlame variables, and check whether the bundled debugpy still prefers
 `attach_to_pid`) and still accepts `--disable-sys-remote-exec`. Build, run
 the unit tests, and attach to a running service from the workspace to
 confirm a breakpoint is hit.
+
+If `main` has moved past the release tag when the pull request is opened,
+merge `main` into the branch (no rebase or force-push), keep the
+`<new version>-openflame.<n>` version when resolving the `package.json`
+conflict, and list the upstream changes that came in with it at the top of
+this file.

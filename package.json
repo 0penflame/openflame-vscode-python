@@ -186,6 +186,37 @@
                                 },
                                 "type": "object"
                             },
+                            "breakOnSystemExit": {
+                                "description": "Controls which SystemExit exit codes cause the debugger to break. Accepts an array of exit codes and/or inclusive ranges. Set to an empty array to never break on SystemExit. When omitted, the debugger's default applies: successful exits (SystemExit(0) and SystemExit(None), plus 3 under Django/Flask) are ignored, and any other code causes a break when uncaught-exception breaking is enabled.",
+                                "type": "array",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "type": "integer",
+                                            "description": "A specific SystemExit code to break on."
+                                        },
+                                        {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "description": "An inclusive range of SystemExit codes to break on.",
+                                            "properties": {
+                                                "from": {
+                                                    "type": "integer",
+                                                    "description": "Lower bound of the range (inclusive)."
+                                                },
+                                                "to": {
+                                                    "type": "integer",
+                                                    "description": "Upper bound of the range (inclusive)."
+                                                }
+                                            },
+                                            "required": [
+                                                "from",
+                                                "to"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
                             "connect": {
                                 "label": "Attach by connecting to debugpy over a socket.",
                                 "properties": {
@@ -404,6 +435,37 @@
                                     }
                                 },
                                 "type": "object"
+                            },
+                            "breakOnSystemExit": {
+                                "description": "Controls which SystemExit exit codes cause the debugger to break. Accepts an array of exit codes and/or inclusive ranges. Set to an empty array to never break on SystemExit. When omitted, the debugger's default applies: successful exits (SystemExit(0) and SystemExit(None), plus 3 under Django/Flask) are ignored, and any other code causes a break when uncaught-exception breaking is enabled.",
+                                "type": "array",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "type": "integer",
+                                            "description": "A specific SystemExit code to break on."
+                                        },
+                                        {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "description": "An inclusive range of SystemExit codes to break on.",
+                                            "properties": {
+                                                "from": {
+                                                    "type": "integer",
+                                                    "description": "Lower bound of the range (inclusive)."
+                                                },
+                                                "to": {
+                                                    "type": "integer",
+                                                    "description": "Upper bound of the range (inclusive)."
+                                                }
+                                            },
+                                            "required": [
+                                                "from",
+                                                "to"
+                                            ]
+                                        }
+                                    ]
+                                }
                             },
                             "console": {
                                 "default": "integratedTerminal",
@@ -641,6 +703,13 @@
         "ms-python.python"
     ],
     "scripts": {
+        "setup": "node ./build/setup.js",
+        "setup:msft": "node ./build/setup-msft.js",
+        "setup:msft-registry": "node ./build/setup-npm-registry.js",
+        "ci:msft": "node ./build/setup-npm-registry.js --ci",
+        "setup-hooks": "node ./build/setup-hooks.js",
+        "normalize-lockfile": "node ./build/normalize-package-lock.js",
+        "test:setup": "node --test ./build/setup.test.js ./build/setup-npm-registry.test.js ./build/normalize-package-lock.test.js",
         "vscode:prepublish": "npm run package",
         "compile": "webpack",
         "watch": "webpack --watch",
@@ -648,9 +717,9 @@
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "npm run compile-tests && npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
-        "format-check": "prettier --check \"src/**/*.ts\" \"build/**/*.yml\" \".github/**/*.yml\"",
-        "format-fix": "prettier --write \"src/**/*.ts\" \"build/**/*.yml\" \".github/**/*.yml\"",
+        "lint": "eslint src --ext ts \"build/setup*.js\" \"build/normalize-package-lock*.js\"",
+        "format-check": "prettier --check \"src/**/*.ts\" \"build/**/*.yml\" \".github/**/*.yml\" \"build/setup*.js\" \"build/normalize-package-lock*.js\" build/package-feeds.json",
+        "format-fix": "prettier --write \"src/**/*.ts\" \"build/**/*.yml\" \".github/**/*.yml\" \"build/setup*.js\" \"build/normalize-package-lock*.js\" build/package-feeds.json",
         "test": "node ./out/test/runTest.js",
         "vsce-package": "npx @vscode/vsce package -o python-debugger.vsix"
     },
@@ -673,7 +742,7 @@
         "chai-as-promised": "^7.1.1",
         "eslint": "^8.50.0",
         "glob": "^8.0.3",
-        "mocha": "^10.7.0",
+        "mocha": "^12.0.3",
         "prettier": "^3.0.3",
         "semver": "^7.5.4",
         "sinon": "^15.0.2",
@@ -687,7 +756,7 @@
     "dependencies": {
         "@vscode/debugadapter": "^1.65.0",
         "@vscode/debugprotocol": "^1.65.0",
-        "@vscode/extension-telemetry": "^0.8.4",
+        "@vscode/extension-telemetry": "^1.5.2",
         "@vscode/python-extension": "^1.0.6",
         "@vscode/windows-process-tree": "^0.7.0",
         "fs-extra": "^11.2.0",

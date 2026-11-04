@@ -585,5 +585,39 @@ getInfoPerOS().forEach(([osName, osType, path]) => {
             });
             expect(debugConfig).to.have.property('consoleTitle', consoleName);
         });
+
+        ['${command:PickOpenflameProcess}', '${command:RunOpenflameProcess}'].forEach((processId) => {
+            test(`OpenFlame attach with ${processId} injects without sys.remote_exec`, async () => {
+                const workspaceFolder = createMoqWorkspaceFolder(__dirname);
+                const debugConfig = await debugProvider.resolveDebugConfiguration!(workspaceFolder, {
+                    ...attach,
+                    processId,
+                } as DebugConfiguration);
+                expect(debugConfig).to.have.property('debugpyArgs').deep.equal(['--disable-sys-remote-exec']);
+            });
+        });
+
+        test('OpenFlame attach keeps existing debugpyArgs and does not repeat the flag', async () => {
+            const workspaceFolder = createMoqWorkspaceFolder(__dirname);
+            const debugConfig = await debugProvider.resolveDebugConfiguration!(workspaceFolder, {
+                ...attach,
+                processId: '${command:PickOpenflameProcess}',
+                debugpyArgs: ['--log-to', '/tmp/x', '--disable-sys-remote-exec'],
+            } as DebugConfiguration);
+            expect(debugConfig)
+                .to.have.property('debugpyArgs')
+                .deep.equal(['--log-to', '/tmp/x', '--disable-sys-remote-exec']);
+        });
+
+        test('Attach by other process ids leaves debugpyArgs alone', async () => {
+            const workspaceFolder = createMoqWorkspaceFolder(__dirname);
+            for (const processId of ['${command:pickProcess}', '1234', 1234]) {
+                const debugConfig = await debugProvider.resolveDebugConfiguration!(workspaceFolder, {
+                    ...attach,
+                    processId,
+                } as DebugConfiguration);
+                expect(debugConfig).to.not.have.property('debugpyArgs');
+            }
+        });
     });
 });

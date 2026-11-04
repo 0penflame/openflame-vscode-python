@@ -3,14 +3,39 @@
 
 'use strict';
 
-import { CancellationToken, Uri, WorkspaceFolder } from 'vscode';
+import { CancellationToken, DebugConfiguration, Uri, WorkspaceFolder } from 'vscode';
 import { getOSType, OSType } from '../../../common/platform';
 import { AttachRequestArguments, DebugOptions, PathMapping } from '../../../types';
 import { BaseConfigurationResolver } from './base';
 import { getConfiguration } from '../../../common/vscodeapi';
 import { traceLog } from '../../../common/log/logging';
 
+// OpenFlame: process ids from the OpenFlame process picker.
+const OPENFLAME_PROCESS_VARIABLES = ['${command:PickOpenflameProcess}', '${command:RunOpenflameProcess}'];
+const DISABLE_SYS_REMOTE_EXEC = '--disable-sys-remote-exec';
+
 export class AttachConfigurationResolver extends BaseConfigurationResolver<AttachRequestArguments> {
+    public async resolveDebugConfiguration(
+        folder: WorkspaceFolder | undefined,
+        debugConfiguration: DebugConfiguration,
+        token?: CancellationToken,
+    ): Promise<AttachRequestArguments | undefined> {
+        // OpenFlame services are network servers that sit idle between
+        // requests. On Python 3.14+ debugpy injects into the process with
+        // sys.remote_exec(), which only runs once the process next executes
+        // Python code, so attaching to an idle service times out. Inject
+        // with gdb instead, which does not wait for the target.
+        if (OPENFLAME_PROCESS_VARIABLES.includes(debugConfiguration.processId)) {
+            const debugpyArgs: string[] = Array.isArray(debugConfiguration.debugpyArgs)
+                ? debugConfiguration.debugpyArgs
+                : [];
+            if (!debugpyArgs.includes(DISABLE_SYS_REMOTE_EXEC)) {
+                debugConfiguration.debugpyArgs = [...debugpyArgs, DISABLE_SYS_REMOTE_EXEC];
+            }
+        }
+        return super.resolveDebugConfiguration(folder, debugConfiguration, token);
+    }
+
     public async resolveDebugConfigurationWithSubstitutedVariables(
         folder: WorkspaceFolder | undefined,
         debugConfiguration: AttachRequestArguments,
